@@ -1,0 +1,58 @@
+---
+title: "Class 2/26"
+author: "Samuel Lowry"
+date: "2/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(skimr)
+library(rstanarm)
+library(tidyverse)
+```
+
+```{r data}
+load("raw-data/nes.rda")
+
+nes <- nes %>% 
+  select(year, partyid7, real_ideo, race_adj, age_discrete, educ1, female, income) %>% 
+  mutate(race = if_else(race_adj == 1, "White", 
+                        ifelse(race_adj == 1.5, "Other", "Black"))) %>% 
+  mutate(race = factor(race)) %>% 
+  drop_na() %>% 
+  mutate()
+
+
+```
+
+```{r}
+wemen_is_lib <- stan_glm(partyid7 ~ female, data = nes, refresh = FALSE)
+
+nes <- nes %>% 
+  mutate(pred_gender = predict(wemen_is_lib, nes))
+
+ slopes <- nes %>% 
+    group_by(year) %>% 
+    nest() %>% 
+    mutate(models = map(data, ~lm(partyid7 ~ female, data = .x))) %>% 
+    mutate(coefs = map(models, ~coef(.x))) %>% 
+    mutate(slope = map_dbl(coefs, ~pluck(.x, "female"))) %>% 
+    arrange(desc(slope))
+ 
+ slopes %>% 
+   ggplot(aes(x = year, y = slope)) +
+   geom_point()
+```
+
+```{r}
+party_model <- stan_glm(partyid7 ~ real_ideo, data = nes, refresh = FALSE)
+
+
+nes <- nes %>% 
+  mutate(pred_ideo = predict(party_model, nes))
+```
+```{r}
+
+```
+
